@@ -1,4 +1,4 @@
-var CACHE = 'mis-gastos-v5';
+var CACHE = 'mis-gastos-v6';
 var FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
