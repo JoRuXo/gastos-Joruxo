@@ -27,7 +27,7 @@
   --line: #E5E8F0;
   --primary: #4F46E5;
   --primary-d: #4338CA;
-  --primary-soft: #EEefFE;
+  --primary-soft: #EEEFFE;
   --accent: #4F46E5;
   --accent-soft: #EEEFFE;
   --income: #16A34A;
@@ -37,9 +37,11 @@
   --danger: #DC2626;
   --radius: 22px;
   --radius-sm: 14px;
-  --shadow: 0 8px 24px rgba(30,40,80,.08);
-  --shadow-sm: 0 3px 12px rgba(30,40,80,.06);
+  --shadow: 0 8px 24px rgba(79,70,229,.08);
+  --shadow-sm: 0 3px 12px rgba(79,70,229,.05);
 }
+
+body { background: #EEF0F6; }
 
 body { background: var(--bg); }
 
@@ -52,7 +54,7 @@ body { background: var(--bg); }
   background:
     radial-gradient(1200px 500px at 80% -10%, rgba(79,70,229,.05), transparent 60%),
     radial-gradient(900px 400px at -10% 10%, rgba(79,70,229,.04), transparent 55%),
-    var(--bg);
+    #EEF0F6;
   padding: 18px 14px 0;
 }
 
@@ -84,11 +86,11 @@ body { background: var(--bg); }
 
 /* ---------- Hero card ---------- */
 .hero {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: #FFFFFF;
+  border: 1px solid #E5E8F0;
   border-radius: var(--radius);
   padding: 20px 22px 18px;
-  color: var(--ink);
+  color: #1A1E27;
   box-shadow: var(--shadow);
   position: relative;
   overflow: hidden;
@@ -381,17 +383,17 @@ body { background: var(--bg); }
 
 /* ---------- Calendario ---------- */
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-.cal-dow { text-align: center; font-size: 10px; font-weight: 700; color: var(--faint); text-transform: uppercase; padding-bottom: 4px; }
-.cal-cell { aspect-ratio: 1 / 1.15; border-radius: 11px; background: var(--surface); border: 1px solid var(--line); padding: 5px 3px 4px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: .12s; overflow: hidden; }
+.cal-dow { text-align: center; font-size: 10px; font-weight: 700; color: var(--faint); text-transform: uppercase; padding-bottom: 6px; }
+.cal-cell { aspect-ratio: 1 / 1.35; border-radius: 11px; background: #FFFFFF; border: 1px solid #E5E8F0; padding: 6px 4px 5px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: .12s; overflow: hidden; }
 .cal-cell.empty { background: transparent; border: none; cursor: default; }
-.cal-cell.tiene { background: var(--expense-soft); border-color: #F7D4D4; }
+.cal-cell.tiene { background: #FEF2F2; border-color: #FECACA; }
 .cal-cell:not(.empty):active { transform: scale(.94); }
-.cal-cell .cd { font-size: 12px; font-weight: 700; color: var(--ink); }
-.cal-cell .nums { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 1px; width: 100%; }
-.cal-cell .cg { font-size: 10.5px; font-weight: 700; color: var(--expense); line-height: 1.1; }
-.cal-cell .ci { font-size: 10px; font-weight: 700; color: var(--income); line-height: 1.1; }
-.cal-cell.hoy { outline: 2px solid var(--primary); outline-offset: -1px; }
-.del-month-btn { background: none; border: none; color: var(--danger); font-family: 'Hanken Grotesk'; font-weight: 600; font-size: 12px; cursor: pointer; text-decoration: underline; display: block; margin: 14px auto 0; }
+.cal-cell .cd { font-size: 13px; font-weight: 700; color: #1A1E27; }
+.cal-cell .nums { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
+.cal-cell .cg { font-size: 13px; font-weight: 800; color: #DC2626; line-height: 1.1; }
+.cal-cell .ci { font-size: 12px; font-weight: 800; color: #16A34A; line-height: 1.1; }
+.cal-cell.hoy { outline: 2px solid #4F46E5; outline-offset: -1px; }
+.del-month-btn { background: none; border: none; color: #DC2626; font-family: 'Hanken Grotesk'; font-weight: 600; font-size: 12px; cursor: pointer; text-decoration: underline; display: block; margin: 14px auto 0; }
 </style>
 </head>
 <body>
