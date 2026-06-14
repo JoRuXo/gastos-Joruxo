@@ -43,8 +43,6 @@
 
 body { background: #EEF0F6; }
 
-body { background: var(--bg); }
-
 #app {
   font-family: 'Hanken Grotesk', sans-serif;
   color: var(--ink);
@@ -264,7 +262,7 @@ body { background: var(--bg); }
 .deduce-btn { background: var(--primary-soft); color: var(--primary); border: none; border-radius: 9px; padding: 7px 11px; font-family: 'Hanken Grotesk'; font-weight: 600; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .deduce-btn:active { transform: scale(.96); }
 .deduce-btn:disabled { opacity: .6; }
-.spinner-sm { width: 13px; height: 13px; border: 2px solid rgba(20,84,60,.25); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+.spinner-sm { width: 13px; height: 13px; border: 2px solid rgba(79,70,229,.25); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
 .cat-hint { background: var(--accent-soft); border-radius: 12px; padding: 11px 13px; font-size: 12.5px; color: #3730A3; line-height: 1.45; margin-bottom: 12px; }
 
 .rev-row { background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; position: relative; }
@@ -339,8 +337,8 @@ body { background: var(--bg); }
 /* ---------- Login screen ---------- */
 #loginScreen {
   position: fixed; inset: 0; z-index: 100;
-  background: radial-gradient(900px 400px at 80% -10%, rgba(20,84,60,.08), transparent 60%),
-              radial-gradient(700px 400px at -10% 10%, rgba(217,128,59,.08), transparent 55%),
+  background: radial-gradient(900px 400px at 80% -10%, rgba(79,70,229,.08), transparent 60%),
+              radial-gradient(700px 400px at -10% 10%, rgba(79,70,229,.06), transparent 55%),
               var(--bg);
   display: flex; align-items: center; justify-content: center; padding: 24px;
 }
@@ -716,7 +714,7 @@ body { background: var(--bg); }
     var size = 116, stroke = 18, r = (size - stroke) / 2, c = 2 * Math.PI * r, cx = size / 2;
     var parts = "", offset = 0;
     if (total <= 0) {
-      parts = '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="#ECE4D4" stroke-width="' + stroke + '"/>';
+      parts = '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="#E4E7F0" stroke-width="' + stroke + '"/>';
     } else {
       segments.forEach(function (s) {
         var frac = s.amount / total;
