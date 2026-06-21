@@ -132,10 +132,10 @@ body { background: #FFFFFF; }
 .btn .ic { font-size: 16px; }
 
 /* ---------- Tabs ---------- */
-.tabs { display: flex; gap: 5px; background: #F3F4F6; border-radius: 13px; padding: 4px; margin: 16px 0 14px; border: 1px solid #E5E7EB; }
+.tabs { display: flex; gap: 3px; background: #F3F4F6; border-radius: 13px; padding: 4px; margin: 16px 0 14px; border: 1px solid #E5E7EB; }
 .tabs button {
-  flex: 1; border: none; background: transparent; padding: 9px 4px; border-radius: 10px; cursor: pointer;
-  font-family: 'Hanken Grotesk'; font-weight: 600; font-size: 12px; color: #6B7280; transition: .18s;
+  flex: 1; border: none; background: transparent; padding: 9px 2px; border-radius: 9px; cursor: pointer;
+  font-family: 'Hanken Grotesk'; font-weight: 600; font-size: 10.5px; color: #6B7280; transition: .18s; white-space: nowrap;
 }
 .tabs button.on { background: #FFFFFF; color: #4F46E5; box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 1px solid #E0E7FF; }
 
@@ -193,6 +193,10 @@ body { background: #FFFFFF; }
 .item .chev { color: var(--faint); font-size: 20px; margin-left: 6px; line-height: 1; }
 .item .item-del { margin-left: 8px; width: 30px; height: 30px; flex-shrink: 0; border: none; background: var(--expense-soft); color: var(--danger); border-radius: 9px; font-size: 14px; cursor: pointer; display: grid; place-items: center; transition: .12s; }
 .item .item-del:active { transform: scale(.88); }
+.item .debt-settle { margin-left: 6px; width: 30px; height: 30px; flex-shrink: 0; border: none; background: var(--income-soft); color: var(--income); border-radius: 9px; font-size: 14px; cursor: pointer; display: grid; place-items: center; transition: .12s; }
+.item .debt-settle:active { transform: scale(.88); }
+.item .debt-del { margin-left: 6px; width: 30px; height: 30px; flex-shrink: 0; border: none; background: var(--expense-soft); color: var(--danger); border-radius: 9px; font-size: 13px; cursor: pointer; display: grid; place-items: center; transition: .12s; }
+.item .debt-del:active { transform: scale(.88); }
 .edit-hint { font-size: 11.5px; color: var(--faint); text-align: center; margin: 0 0 12px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
@@ -422,7 +426,10 @@ body { background: #FFFFFF; }
           <p>Aalsmeer · en euros</p>
         </div>
       </div>
-      <button class="icon-btn" id="exportBtn" title="Exportar">⬇</button>
+      <div style="display:flex;gap:8px">
+        <button class="icon-btn" id="accountBtn" title="Mi cuenta">👤</button>
+        <button class="icon-btn" id="exportBtn" title="Exportar">⬇</button>
+      </div>
     </div>
 
     <div class="hero">
@@ -447,9 +454,10 @@ body { background: #FFFFFF; }
 
     <div class="tabs">
       <button id="tabResumen" class="on">Resumen</button>
-      <button id="tabMov">Movimientos</button>
-      <button id="tabCal">Calendario</button>
-      <button id="tabEvol">Evolución</button>
+      <button id="tabMov">Movim.</button>
+      <button id="tabCal">Calend.</button>
+      <button id="tabEvol">Evol.</button>
+      <button id="tabDeudas">Deudas</button>
     </div>
 
     <main id="content"></main>
@@ -513,6 +521,7 @@ body { background: #FFFFFF; }
 
   // ---------- State ----------
   var expenses = [];
+  var debts = [];
   var view = "resumen";
   var now = new Date();
   var viewYear = now.getFullYear();
@@ -616,10 +625,11 @@ body { background: #FFFFFF; }
       if (session && session.user) {
         currentUser = session.user;
         hideLogin();
-        loadData().then(function() { render(); });
+        Promise.all([loadData(), loadDebts()]).then(function() { render(); });
       } else {
         currentUser = null;
         expenses = [];
+        debts = [];
         showLogin();
       }
     });
@@ -671,6 +681,31 @@ body { background: #FFFFFF; }
   }
 
   function saveData() { return Promise.resolve(); } // compatibilidad — no se usa directamente
+
+  // ---------- Deudas (Supabase) ----------
+  function loadDebts() {
+    if (!currentUser) return Promise.resolve();
+    return sb.from("deudas").select("*").order("date", { ascending: false })
+      .then(function(res) {
+        if (res.error) { console.error("loadDebts", res.error); return; }
+        debts = (res.data || []).map(function(r) {
+          return { id: r.id, persona: r.persona, amount: r.amount, direction: r.direction, note: r.note || "", date: r.date, settled: !!r.settled, createdAt: new Date(r.created_at).getTime() };
+        });
+      });
+  }
+
+  function saveDebt(d) {
+    var row = { id: d.id, persona: d.persona, amount: d.amount, direction: d.direction, note: d.note || "", date: d.date, settled: !!d.settled };
+    return sb.from("deudas").upsert(row).then(function(res) {
+      if (res.error) { console.error("saveDebt", res.error); toast("Error al guardar 😕"); }
+    });
+  }
+
+  function deleteDebt(id) {
+    return sb.from("deudas").delete().eq("id", id).then(function(res) {
+      if (res.error) { console.error("deleteDebt", res.error); toast("Error al borrar 😕"); }
+    });
+  }
 
   // ---------- Selectors / computations ----------
   function monthExpenses() {
@@ -980,6 +1015,174 @@ body { background: #FFFFFF; }
     });
   }
 
+  // ---------- Render: deudas ----------
+  function renderDeudas() {
+    var content = document.getElementById("content");
+    var pendientes = debts.filter(function (d) { return !d.settled; });
+    var liquidadas = debts.filter(function (d) { return d.settled; });
+    var teDeben = pendientes.filter(function (d) { return d.direction === "te_deben"; });
+    var debesA = pendientes.filter(function (d) { return d.direction === "debes"; });
+    var totalTeDeben = sum(teDeben);
+    var totalDebes = sum(debesA);
+    var balance = totalTeDeben - totalDebes;
+
+    var addBtnHtml = '<button class="btn btn-primary" id="addDebtBtn" style="width:100%;margin-bottom:14px">+ Añadir deuda</button>';
+
+    if (pendientes.length === 0 && liquidadas.length === 0) {
+      content.innerHTML = addBtnHtml +
+        '<div class="card"><div class="empty"><div class="big">🤝</div>' +
+        '<p>Aún no has registrado ninguna deuda.</p>' +
+        '<p class="hint">Apunta aquí lo que te deben y lo que debes, para no perder la cuenta.</p></div></div>';
+      attachDeudasEvents();
+      return;
+    }
+
+    var summary =
+      '<div class="card"><h3>Balance de deudas</h3>' +
+      '<div style="display:flex;gap:10px">' +
+      '<div style="flex:1;background:var(--income-soft);border:1px solid #BBF7D0;border-radius:12px;padding:11px 13px">' +
+      '<div style="font-size:10px;color:#15803D;text-transform:uppercase;font-weight:700;letter-spacing:.04em">Te deben</div>' +
+      '<div style="font-family:\'Fraunces\',serif;font-size:18px;font-weight:700;color:var(--income)">' + eur(totalTeDeben) + '</div></div>' +
+      '<div style="flex:1;background:var(--expense-soft);border:1px solid #FECACA;border-radius:12px;padding:11px 13px">' +
+      '<div style="font-size:10px;color:#B91C1C;text-transform:uppercase;font-weight:700;letter-spacing:.04em">Debes</div>' +
+      '<div style="font-family:\'Fraunces\',serif;font-size:18px;font-weight:700;color:var(--expense)">' + eur(totalDebes) + '</div></div>' +
+      '</div>' +
+      '<div style="margin-top:11px;text-align:center;font-size:12.5px;color:var(--muted)">Balance neto: <b style="color:' + (balance >= 0 ? "var(--income)" : "var(--expense)") + '">' + (balance >= 0 ? "+" : "") + eur(balance) + '</b></div>' +
+      '</div>';
+
+    function row(d) {
+      var esTeDeben = d.direction === "te_deben";
+      var icon = esTeDeben ? "📥" : "📤";
+      var color = esTeDeben ? "var(--income)" : "var(--expense)";
+      var bg = esTeDeben ? "var(--income-soft)" : "var(--expense-soft)";
+      return '<div class="item" data-debt-id="' + d.id + '">' +
+        '<div class="ico" style="background:' + bg + '">' + icon + '</div>' +
+        '<div class="mid"><div class="t">' + esc(d.persona) + '</div>' +
+        '<div class="s">' + (d.note ? esc(d.note) + " · " : "") + shortDate(d.date) + '</div></div>' +
+        '<div class="amt" style="color:' + color + '">' + eur(d.amount) + '</div>' +
+        (d.settled ? '' : '<button class="debt-settle" data-settle-id="' + d.id + '" title="Marcar como pagada">✓</button>') +
+        '<button class="debt-del" data-del-debt-id="' + d.id + '" title="Borrar">🗑</button>' +
+        '</div>';
+    }
+
+    var pendHtml = pendientes.length
+      ? '<div class="card"><h3>Pendientes</h3>' + pendientes.map(row).join('') + '</div>'
+      : '<div class="card"><div class="empty" style="padding:18px"><p>No tienes deudas pendientes. ✓</p></div></div>';
+
+    var liqHtml = '';
+    if (liquidadas.length) {
+      liqHtml = '<div class="card">' +
+        '<div class="dup-section-head"><span>' + liquidadas.length + ' liquidada' + (liquidadas.length > 1 ? 's' : '') + '</span>' +
+        '<button class="dup-toggle" id="liqToggle">Ver ▾</button></div>' +
+        '<div id="liqList" style="display:none">' + liquidadas.map(row).join('') + '</div>' +
+        '</div>';
+    }
+
+    content.innerHTML = addBtnHtml + summary + pendHtml + liqHtml;
+    attachDeudasEvents();
+  }
+
+  // Conecta los eventos propios de la vista Deudas (se reconstruye cada vez que se renderiza)
+  function attachDeudasEvents() {
+    var addBtn = document.getElementById("addDebtBtn");
+    if (addBtn) addBtn.addEventListener("click", function () { openDebtModal({}); });
+    var liqToggle = document.getElementById("liqToggle");
+    if (liqToggle) liqToggle.addEventListener("click", function () {
+      var ll = document.getElementById("liqList");
+      var open = ll.style.display !== "none";
+      ll.style.display = open ? "none" : "block";
+      this.textContent = open ? "Ver ▾" : "Ocultar ▴";
+    });
+  }
+
+  // ---------- Modal de deuda ----------
+  function openDebtModal(opts) {
+    opts = opts || {};
+    var editingDebtId = opts.id || null;
+    var persona = opts.persona || "";
+    var amount = opts.amount != null ? String(opts.amount).replace(".", ",") : "";
+    var direction = opts.direction || "te_deben";
+    var note = opts.note || "";
+    var date = opts.date || todayISO();
+
+    var sheet = document.getElementById("sheet");
+    sheet.innerHTML =
+      '<div class="grab"></div>' +
+      '<h2>' + (editingDebtId ? "Editar deuda" : "Nueva deuda") + '</h2>' +
+      '<div class="kind-toggle" id="debtDirToggle">' +
+      '<button type="button" data-dir="te_deben" class="' + (direction === "te_deben" ? "on-ingreso" : "") + '">📥 Me debe</button>' +
+      '<button type="button" data-dir="debes" class="' + (direction === "debes" ? "on-gasto" : "") + '">📤 Le debo</button>' +
+      '</div>' +
+      '<div class="field"><label>Persona</label><input id="dPersona" class="txt-input" type="text" placeholder="p. ej. David" value="' + esc(persona) + '"></div>' +
+      '<div class="field"><label>Importe</label>' +
+      '<div class="amount-input"><span>€</span><input id="dAmount" type="text" inputmode="decimal" placeholder="0,00" value="' + esc(amount) + '"></div></div>' +
+      '<div class="field"><label>Concepto (opcional)</label><input id="dNote" class="txt-input" type="text" placeholder="p. ej. Cena del sábado" value="' + esc(note) + '"></div>' +
+      '<div class="field"><label>Fecha</label><input id="dDate" class="date-input" type="date" value="' + esc(date) + '"></div>' +
+      '<div class="sheet-actions">' +
+      (editingDebtId ? '<button class="btn del-btn" id="dDelBtn">🗑</button>' : "") +
+      '<button class="btn save-btn" id="dSaveBtn">' + (editingDebtId ? "Guardar cambios" : "Guardar deuda") + '</button>' +
+      '</div>';
+
+    document.getElementById("modal").classList.remove("hidden");
+
+    document.getElementById("debtDirToggle").addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-dir]");
+      if (!b) return;
+      direction = b.getAttribute("data-dir");
+      this.querySelector('[data-dir="te_deben"]').className = direction === "te_deben" ? "on-ingreso" : "";
+      this.querySelector('[data-dir="debes"]').className = direction === "debes" ? "on-gasto" : "";
+    });
+
+    document.getElementById("dSaveBtn").addEventListener("click", function () {
+      var persona2 = document.getElementById("dPersona").value.trim();
+      var amt = parseAmount(document.getElementById("dAmount").value);
+      if (!persona2) { toast("Pon el nombre de la persona"); document.getElementById("dPersona").focus(); return; }
+      if (isNaN(amt) || amt <= 0) { toast("Pon un importe válido"); document.getElementById("dAmount").focus(); return; }
+      var note2 = document.getElementById("dNote").value.trim();
+      var date2 = document.getElementById("dDate").value || todayISO();
+      var d;
+      if (editingDebtId) {
+        d = debts.find(function (x) { return x.id === editingDebtId; });
+        if (d) { d.persona = persona2; d.amount = amt; d.direction = direction; d.note = note2; d.date = date2; }
+      } else {
+        d = { id: uid(), persona: persona2, amount: amt, direction: direction, note: note2, date: date2, settled: false, createdAt: Date.now() };
+        debts.push(d);
+      }
+      saveDebt(d).then(function () { toast(editingDebtId ? "Deuda actualizada ✓" : "Deuda guardada ✓"); });
+      closeModal();
+      render();
+    });
+
+    var delBtn = document.getElementById("dDelBtn");
+    if (delBtn) delBtn.addEventListener("click", function () {
+      debts = debts.filter(function (x) { return x.id !== editingDebtId; });
+      deleteDebt(editingDebtId).then(function () { toast("Deuda eliminada"); });
+      closeModal();
+      render();
+    });
+
+    setTimeout(function () { var p = document.getElementById("dPersona"); if (p && !editingDebtId) p.focus(); }, 250);
+  }
+
+  // ---------- Cuenta / cerrar sesión ----------
+  function openAccountSheet() {
+    var sheet = document.getElementById("sheet");
+    var email = currentUser ? currentUser.email : "";
+    sheet.innerHTML =
+      '<div class="grab"></div>' +
+      '<h2>Mi cuenta</h2>' +
+      '<div class="field"><label>Sesión iniciada como</label>' +
+      '<div class="txt-input" style="background:var(--bg2);color:var(--muted)">' + esc(email) + '</div></div>' +
+      '<div class="sheet-actions"><button class="btn btn-ghost" id="logoutBtn" style="flex:1;color:var(--danger)">Cerrar sesión</button></div>';
+    document.getElementById("modal").classList.remove("hidden");
+    document.getElementById("logoutBtn").addEventListener("click", function () {
+      sb.auth.signOut().then(function () {
+        closeModal();
+        toast("Sesión cerrada");
+      });
+    });
+  }
+
   function emptyState() {
     return '<div class="card"><div class="empty"><div class="big">🧾</div>' +
       '<p>Aún no hay movimientos en ' + monthName(viewMonth) + '.</p>' +
@@ -992,9 +1195,11 @@ body { background: #FFFFFF; }
     document.getElementById("tabMov").classList.toggle("on", view === "movimientos");
     document.getElementById("tabCal").classList.toggle("on", view === "calendario");
     document.getElementById("tabEvol").classList.toggle("on", view === "evolucion");
+    document.getElementById("tabDeudas").classList.toggle("on", view === "deudas");
     if (view === "resumen") renderResumen();
     else if (view === "evolucion") renderEvolucion();
     else if (view === "calendario") renderCalendario();
+    else if (view === "deudas") renderDeudas();
     else renderMovimientos();
   }
 
@@ -1533,7 +1738,9 @@ body { background: #FFFFFF; }
     document.getElementById("tabMov").addEventListener("click", function () { view = "movimientos"; render(); });
     document.getElementById("tabEvol").addEventListener("click", function () { view = "evolucion"; render(); });
     document.getElementById("tabCal").addEventListener("click", function () { view = "calendario"; render(); });
+    document.getElementById("tabDeudas").addEventListener("click", function () { view = "deudas"; render(); });
     document.getElementById("delMonthBtn").addEventListener("click", deleteMonth);
+    document.getElementById("accountBtn").addEventListener("click", openAccountSheet);
     document.getElementById("addBtn").addEventListener("click", function () { openModal({}); });
     document.getElementById("pasteBtn").addEventListener("click", openPasteSheet);
     document.getElementById("scanInput").addEventListener("change", function (ev) {
@@ -1546,6 +1753,41 @@ body { background: #FFFFFF; }
     document.getElementById("exportBtn2").addEventListener("click", exportCSV);
 
     document.getElementById("content").addEventListener("click", function (ev) {
+      // Marcar una deuda como pagada
+      var settleBtn = ev.target.closest(".debt-settle");
+      if (settleBtn) {
+        ev.stopPropagation();
+        var sId = settleBtn.getAttribute("data-settle-id");
+        var deuda = debts.find(function (x) { return x.id === sId; });
+        if (deuda) {
+          deuda.settled = true;
+          saveDebt(deuda).then(function () { toast("Marcada como pagada ✓"); });
+          render();
+        }
+        return;
+      }
+      // Borrar una deuda
+      var debtDelBtn = ev.target.closest(".debt-del");
+      if (debtDelBtn) {
+        ev.stopPropagation();
+        var ddId = debtDelBtn.getAttribute("data-del-debt-id");
+        var deuda2 = debts.find(function (x) { return x.id === ddId; });
+        var etiqueta2 = deuda2 ? deuda2.persona : "esta deuda";
+        if (window.confirm("¿Borrar la deuda con \"" + etiqueta2 + "\"?")) {
+          debts = debts.filter(function (x) { return x.id !== ddId; });
+          deleteDebt(ddId).then(function () { toast("Deuda eliminada"); });
+          render();
+        }
+        return;
+      }
+      // Editar una deuda al tocarla
+      var debtItem = ev.target.closest(".item[data-debt-id]");
+      if (debtItem) {
+        var did = debtItem.getAttribute("data-debt-id");
+        var dd = debts.find(function (x) { return x.id === did; });
+        if (dd) openDebtModal({ id: dd.id, persona: dd.persona, amount: dd.amount, direction: dd.direction, note: dd.note, date: dd.date });
+        return;
+      }
       // Botón de borrar de un movimiento (sin abrir la edición)
       var delBtn = ev.target.closest(".item-del");
       if (delBtn) {
