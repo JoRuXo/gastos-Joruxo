@@ -197,6 +197,8 @@ body { background: #FFFFFF; }
 .item .debt-settle:active { transform: scale(.88); }
 .item .debt-del { margin-left: 6px; width: 30px; height: 30px; flex-shrink: 0; border: none; background: var(--expense-soft); color: var(--danger); border-radius: 9px; font-size: 13px; cursor: pointer; display: grid; place-items: center; transition: .12s; }
 .item .debt-del:active { transform: scale(.88); }
+.item .debt-adjust { margin-left: 6px; width: 30px; height: 30px; flex-shrink: 0; border: none; background: var(--primary-soft); color: var(--primary); border-radius: 9px; font-size: 16px; font-weight: 700; cursor: pointer; display: grid; place-items: center; transition: .12s; }
+.item .debt-adjust:active { transform: scale(.88); }
 .edit-hint { font-size: 11.5px; color: var(--faint); text-align: center; margin: 0 0 12px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
@@ -1071,6 +1073,7 @@ body { background: #FFFFFF; }
         '<div class="s">' + (d.note ? esc(d.note) + " · " : "") + shortDate(d.date) + '</div></div>' +
         '<div class="amt" style="color:' + color + '">' + eur(d.amount) + '</div>' +
         (d.settled ? '' : '<button class="debt-settle" data-settle-id="' + d.id + '" title="Marcar como pagada">✓</button>') +
+        (d.settled ? '' : '<button class="debt-adjust" data-adjust-id="' + d.id + '" title="Actualizar importe">±</button>') +
         '<button class="debt-del" data-del-debt-id="' + d.id + '" title="Borrar">🗑</button>' +
         '</div>';
     }
@@ -1172,6 +1175,71 @@ body { background: #FFFFFF; }
     });
 
     setTimeout(function () { var p = document.getElementById("dPersona"); if (p && !editingDebtId) p.focus(); }, 250);
+  }
+
+  // ---------- Ajustar importe de deuda ----------
+  function openAdjustDebtModal(deuda) {
+    var tipo = "pagar";
+    var sheet = document.getElementById("sheet");
+    var colorDeuda = deuda.direction === "te_deben" ? "var(--income)" : "var(--expense)";
+    sheet.innerHTML =
+      '<div class="grab"></div>' +
+      '<h2>Actualizar deuda</h2>' +
+      '<div style="background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:16px">' +
+      '<div style="font-size:12px;color:var(--muted)">' + (deuda.direction === "te_deben" ? "Te debe" : "Le debes a") + ' <b>' + esc(deuda.persona) + '</b></div>' +
+      '<div style="font-family:\'Fraunces\',serif;font-size:26px;font-weight:700;color:' + colorDeuda + ';margin-top:3px">' + eur(deuda.amount) + '</div>' +
+      '</div>' +
+      '<div class="kind-toggle" id="adjustToggle">' +
+      '<button type="button" data-tipo="pagar" class="on-ingreso">💸 Pagar parte</button>' +
+      '<button type="button" data-tipo="anadir" class="">➕ Añadir más</button>' +
+      '</div>' +
+      '<div class="field"><label>Importe del ajuste</label>' +
+      '<div class="amount-input"><span>€</span><input id="adjAmount" type="text" inputmode="decimal" placeholder="0,00"></div></div>' +
+      '<div id="adjPreview" style="font-size:12.5px;color:var(--muted);margin-bottom:16px;min-height:18px"></div>' +
+      '<div class="sheet-actions"><button class="btn save-btn" id="adjSaveBtn">Guardar</button></div>';
+
+    document.getElementById("modal").classList.remove("hidden");
+
+    function updatePreview() {
+      var adj = parseAmount(document.getElementById("adjAmount").value);
+      var prev = document.getElementById("adjPreview");
+      if (isNaN(adj) || adj <= 0) { prev.textContent = ""; return; }
+      var nuevo = tipo === "pagar" ? (deuda.amount - adj) : (deuda.amount + adj);
+      if (nuevo <= 0) {
+        prev.innerHTML = 'Quedará en <b style="color:var(--income)">0 € (liquidada)</b>';
+      } else {
+        prev.innerHTML = 'Quedará en <b>' + eur(Math.round(nuevo * 100) / 100) + '</b>';
+      }
+    }
+
+    document.getElementById("adjustToggle").addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-tipo]");
+      if (!b) return;
+      tipo = b.getAttribute("data-tipo");
+      this.querySelector('[data-tipo="pagar"]').className = tipo === "pagar" ? "on-ingreso" : "";
+      this.querySelector('[data-tipo="anadir"]').className = tipo === "anadir" ? "on-gasto" : "";
+      updatePreview();
+    });
+
+    document.getElementById("adjAmount").addEventListener("input", updatePreview);
+
+    document.getElementById("adjSaveBtn").addEventListener("click", function () {
+      var adj = parseAmount(document.getElementById("adjAmount").value);
+      if (isNaN(adj) || adj <= 0) { toast("Pon un importe válido"); document.getElementById("adjAmount").focus(); return; }
+      var nuevo = tipo === "pagar" ? (deuda.amount - adj) : (deuda.amount + adj);
+      if (nuevo <= 0) {
+        deuda.amount = 0;
+        deuda.settled = true;
+        saveDebt(deuda).then(function () { toast("Deuda liquidada ✓"); });
+      } else {
+        deuda.amount = Math.round(nuevo * 100) / 100;
+        saveDebt(deuda).then(function () { toast("Deuda actualizada ✓"); });
+      }
+      closeModal();
+      render();
+    });
+
+    setTimeout(function () { var a = document.getElementById("adjAmount"); if (a) a.focus(); }, 250);
   }
 
   // ---------- Cuenta / cerrar sesión ----------
@@ -1789,6 +1857,15 @@ body { background: #FFFFFF; }
           deleteDebt(ddId).then(function () { toast("Deuda eliminada"); });
           render();
         }
+        return;
+      }
+      // Ajustar importe de una deuda
+      var debtAdjBtn = ev.target.closest(".debt-adjust");
+      if (debtAdjBtn) {
+        ev.stopPropagation();
+        var adjId = debtAdjBtn.getAttribute("data-adjust-id");
+        var deuda3 = debts.find(function (x) { return x.id === adjId; });
+        if (deuda3) openAdjustDebtModal(deuda3);
         return;
       }
       // Editar una deuda al tocarla
