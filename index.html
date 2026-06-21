@@ -223,6 +223,15 @@ body { background: #FFFFFF; }
 
 /* ---------- Modal ---------- */
 .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.modal-close {
+  position: fixed; top: 16px; right: 16px; z-index: 95;
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1.5px solid #E5E7EB; background: #FFFFFF; color: #111827;
+  font-size: 16px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0,0,0,.14);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-close:active { transform: scale(.92); }
 .modal.hidden { display: none; }
 .modal .scrim { position: absolute; inset: 0; background: rgba(20,30,22,.42); backdrop-filter: blur(2px); }
 .sheet {
@@ -475,6 +484,7 @@ body { background: #FFFFFF; }
   <div class="modal hidden" id="modal">
     <div class="scrim" id="scrim"></div>
     <div class="sheet" id="sheet"></div>
+    <button class="modal-close" id="modalCloseBtn" type="button" aria-label="Cerrar">✕</button>
   </div>
 
   <input type="file" id="scanInput" accept="image/*,application/pdf" class="visually-hidden">
@@ -1749,6 +1759,7 @@ body { background: #FFFFFF; }
       handleScan(f);
     });
     document.getElementById("scrim").addEventListener("click", closeModal);
+    document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
     document.getElementById("exportBtn").addEventListener("click", exportCSV);
     document.getElementById("exportBtn2").addEventListener("click", exportCSV);
 
