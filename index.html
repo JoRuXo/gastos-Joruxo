@@ -460,7 +460,8 @@ body { background: #FFFFFF; }
 
     <div class="actions">
       <button class="btn btn-primary" id="addBtn"><span class="ic">＋</span> Añadir gasto</button>
-      <label class="btn btn-ghost" id="scanBtn" for="scanInput"><span class="ic">📷</span> Ticket, captura o PDF</label>
+      <!-- Botón de escaneo oculto: el escaneo automático no está activo (sin clave de Anthropic). Para reactivarlo, quitar el display:none. -->
+      <label class="btn btn-ghost" id="scanBtn" for="scanInput" style="display:none"><span class="ic">📷</span> Ticket, captura o PDF</label>
     </div>
 
     <div class="tabs">
@@ -629,6 +630,11 @@ body { background: #FFFFFF; }
             btn.disabled = false;
             btn.textContent = "Entrar";
           }
+        })
+        .catch(function() {
+          errEl.style.display = "block";
+          btn.disabled = false;
+          btn.textContent = "Entrar";
         });
     }
 
@@ -684,8 +690,9 @@ body { background: #FFFFFF; }
     if (!ok1) return;
     var ok2 = window.confirm("Última confirmación: se borrarán DEFINITIVAMENTE todos los movimientos de " + nombre + ".");
     if (!ok2) return;
+    var diasMes = new Date(viewYear, viewMonth + 1, 0).getDate();
     var ini = monthKey(viewYear, viewMonth) + "-01";
-    var fin = monthKey(viewYear, viewMonth) + "-31";
+    var fin = monthKey(viewYear, viewMonth) + "-" + pad2(diasMes);
     sb.from("gastos").delete().gte("date", ini).lte("date", fin).then(function(res) {
       if (res.error) { console.error("deleteMonth", res.error); toast("Error al borrar 😕"); return; }
       expenses = expenses.filter(function (e) { return (e.date || "").slice(0, 7) !== monthKey(viewYear, viewMonth); });
@@ -1020,13 +1027,7 @@ body { background: #FFFFFF; }
       '</div>' +
       filas;
     document.getElementById("modal").classList.remove("hidden");
-    // Tocar un movimiento del día lo abre para editar
-    sheet.addEventListener("click", function (ev) {
-      var it = ev.target.closest(".item");
-      if (!it) return;
-      var e = expenses.find(function (x) { return x.id === it.getAttribute("data-id"); });
-      if (e) openModal({ id: e.id, amount: e.amount, categoryId: e.categoryId, note: e.note, date: e.date, kind: e.kind });
-    });
+    // (Tocar un movimiento del día para editarlo lo gestiona un único escuchador en wire())
   }
 
   // ---------- Render: deudas ----------
@@ -1830,6 +1831,13 @@ body { background: #FFFFFF; }
     });
     document.getElementById("scrim").addEventListener("click", closeModal);
     document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
+    // Detalle de día (Calendario): tocar un movimiento lo abre para editar. Un único escuchador, no se acumula.
+    document.getElementById("sheet").addEventListener("click", function (ev) {
+      var it = ev.target.closest(".item");
+      if (!it) return;
+      var e = expenses.find(function (x) { return x.id === it.getAttribute("data-id"); });
+      if (e) openModal({ id: e.id, amount: e.amount, categoryId: e.categoryId, note: e.note, date: e.date, kind: e.kind });
+    });
     document.getElementById("exportBtn").addEventListener("click", exportCSV);
     document.getElementById("exportBtn2").addEventListener("click", exportCSV);
 
