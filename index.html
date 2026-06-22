@@ -506,7 +506,9 @@ body { background: #FFFFFF; }
   var SUPABASE_KEY = "sb_publishable_qoTvP530FWlfg1xwrdRxHg_oph9AfVf";
   // ⬆ Solo cambia esas dos líneas, no toques nada más
 
-  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { storageKey: "sb-gastos-joruxo-auth" }
+  });
   var currentUser = null;
 
   var CATS = [
