@@ -1,0 +1,6 @@
+# Finales de línea consistentes: LF en el repositorio y en el disco para
+# todos los archivos de texto. Evita avisos y diffs sucios entre equipos.
+* text=auto eol=lf
+
+# Imágenes: tratarlas siempre como binario, no tocar nunca.
+*.png binary
