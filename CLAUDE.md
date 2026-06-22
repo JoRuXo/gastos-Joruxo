@@ -87,7 +87,7 @@ La función de escanear ticket/PDF con la API de Anthropic **existe en el códig
 
 **Flujo real que usa Alberto:** pega el PDF del extracto bancario en un chat (Claude o Gemini) con un prompt específico que devuelve el listado en formato `fecha;categoriaId;importe;concepto;tipo`, y luego pega ese texto en el botón **"Pegar movimientos"** de la app (que sí funciona, vía `parsePasted()`).
 
-Pendiente en la lista de mejoras: ocultar o avisar en el botón "Ticket, captura o PDF" de que el escaneo automático no funciona.
+**Estado (23 jun 2026):** el botón "Ticket, captura o PDF" se **ocultó** (con `style="display:none"` en el `<label id="scanBtn">`), porque el escaneo automático no funciona y era un botón muerto. El código del escaneo sigue ahí por si algún día se reactiva; para volver a mostrarlo, quitar ese `display:none`.
 
 ### Otras funciones clave
 - **Borrar mes completo:** botón con doble confirmación, borra solo los movimientos del mes que se está viendo.
@@ -129,6 +129,12 @@ Aunque la idea es que los 4 repos lleven los mismos archivos, **cada copia tiene
 
 **Flujo correcto para replicar a un amigo:** copiar `index.html` y `sw.js` de gastos-Joruxo → en el `index.html` copiado, cambiar la `storageKey` a la del repo destino (la línea `auth: { storageKey: "..." }`) → subir versión de caché en `sw.js` → commit y push. El `sw.js` no necesita ajuste por repo (todos usan el mismo nombre de caché `mis-gastos-vN`).
 
+### Convenciones de mantenimiento de los repos (los 4 iguales)
+- **Usuario de GitHub:** la grafía correcta es **`JoRuXo`** (con mayúsculas). Las direcciones remotas deben apuntar a `https://github.com/JoRuXo/<repo>.git`. Si aparece el aviso "This repository moved", es que el remoto está mal escrito en minúsculas; corregir con `git remote set-url`.
+- **`.gitattributes`:** los 4 repos lo llevan con `* text=auto eol=lf` (+ `*.png binary`). Fija finales de línea en **LF** y evita el aviso de CRLF en Windows. No quitarlo.
+- **`.gitignore`:** los 4 repos lo llevan para bloquear basura del sistema (`Thumbs.db`, `.DS_Store`, etc.).
+- **Identidad de git al commitear** en estos repos: nombre `Noel`, email `JoRuXo@hotmail.com`.
+
 ## Cómo desplegar cambios
 1. Editar `index.html` (y `sw.js` si se sube versión de caché).
 2. Commit y push a la rama `main` de cada repositorio que se quiera actualizar.
@@ -141,6 +147,7 @@ Aunque la idea es que los 4 repos lleven los mismos archivos, **cada copia tiene
 - **Nunca cambies** los IDs de categoría, el `SUPABASE_URL`/`SUPABASE_KEY`, ni el modelo de IA fijo, sin confirmación explícita.
 - Si te pido actualizar varios repositorios a la vez (mi copia + las de mis amigos Noel, David, Verónica), hazlo **uno por uno**, mostrándome el diff de cada uno antes de pasar al siguiente.
 - Si algo te parece arriesgado o ambiguo, pregúntame antes de actuar, no asumas.
+- **Mantén este `CLAUDE.md` siempre al día.** Cada vez que tomemos una decisión, cambie cómo quiero las cosas, te cuente una idea, o hagamos una mejora/limpieza relevante, **actualiza este fichero** (la sección que corresponda y el "Historial de decisiones") para que el proyecto tenga memoria escrita de todo. No hace falta que me lo preguntes cada vez: hazlo como parte natural del trabajo y, al final, súbelo a gastos-Joruxo cuando yo confirme.
 
 ## Historial relevante de decisiones
 - Se migró de `localStorage` a Supabase para sincronizar entre dispositivos.
@@ -148,3 +155,14 @@ Aunque la idea es que los 4 repos lleven los mismos archivos, **cada copia tiene
 - Se añadió Calendario, Evolución y Deudas como pestañas nuevas.
 - Se añadió un botón físico de cerrar en los modales tras detectar un problema de navegación en Safari/iPhone.
 - Se decidió explícitamente NO activar el escaneo automático de PDF/tickets vía API de Anthropic en el navegador, para evitar coste y riesgo de exposición de la clave en el repo público.
+
+### 22–23 jun 2026
+- **Aislamiento de sesión:** cada repo guarda su login con una `storageKey` propia (antes compartían "cajón" por estar en el mismo dominio). Ver tabla en "Diferencias por repo".
+- **Arreglos de bugs** (replicados a los 4 repos, caché `v11`):
+  - "Borrar movimientos del mes" fallaba en meses que no tienen 31 días (generaba una fecha imposible que Supabase rechazaba). Ahora usa el último día real del mes.
+  - El botón "Entrar" del login podía quedarse colgado en "Entrando…" si fallaba la conexión; se añadió un `.catch`.
+  - El detalle de día del Calendario acumulaba escuchadores de clic; se movió a un único escuchador en `wire()`.
+  - Se ocultó el botón de escaneo (ver sección de Escaneo).
+- **gastos-Noel** estaba muy atrasado; se igualó del todo a la versión actual de Alberto (conservando su `storageKey`), así recuperó el botón ✕ de cerrar y el ajuste de deudas.
+- **Higiene de repos:** se corrigieron las direcciones remotas a la grafía `JoRuXo`, y se añadieron `.gitattributes` (LF) y `.gitignore` a los 4. Se actualizó el `README` (decía cosas falsas: hablaba de `localStorage` y "sin servidor" cuando ya usa Supabase).
+- **Nueva norma de trabajo:** mantener este `CLAUDE.md` actualizado de forma continua (ver "reglas permanentes").
