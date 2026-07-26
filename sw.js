@@ -1,39 +1,39 @@
-var CACHE = 'mis-gastos-v11';
-var FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+// Service worker de AUTODESTRUCCIÓN.
+//
+// Esta app se mudó a https://joruxo.github.io/gastos/
+//
+// El service worker antiguo guardaba una copia de la app dentro del móvil, y esa
+// copia es la que abría el icono de la pantalla de inicio. Este fichero lo
+// sustituye: en cuanto el navegador lo detecta, borra todas las copias guardadas,
+// se da de baja a sí mismo y recarga las ventanas abiertas. Al recargar,
+// index.html ya redirige a la app nueva.
+//
+// No tiene manejador 'fetch' a propósito: así ninguna petición se sirve desde la
+// caché vieja, todas van directas a la red.
 
-self.addEventListener('install', function (e) {
-  e.waitUntil(
-    caches.open(CACHE).then(function (c) {
-      return Promise.all(FILES.map(function (f) {
-        return c.add(f).catch(function () {});
-      }));
-    })
-  );
+self.addEventListener('install', function () {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', function (e) {
   e.waitUntil(
-    caches.keys().then(function (keys) {
-      return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
-    })
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', function (e) {
-  if (e.request.method !== 'GET') return;
-  var url = new URL(e.request.url);
-  if (url.hostname === 'api.anthropic.com' || url.hostname.indexOf('googleapis.com') > -1 || url.hostname.indexOf('gstatic.com') > -1 || url.hostname.indexOf('supabase.co') > -1 || url.hostname.indexOf('jsdelivr.net') > -1) return;
-  e.respondWith(
-    fetch(e.request).then(function (res) {
-      if (res && res.status === 200 && res.type === 'basic') {
-        var clone = res.clone();
-        caches.open(CACHE).then(function (c) { c.put(e.request, clone); });
-      }
-      return res;
-    }).catch(function () {
-      return caches.match(e.request);
-    })
+    caches.keys()
+      .then(function (claves) {
+        return Promise.all(claves.map(function (k) { return caches.delete(k); }));
+      })
+      .catch(function () {})
+      .then(function () {
+        return self.registration.unregister();
+      })
+      .catch(function () {})
+      .then(function () {
+        return self.clients.matchAll({ type: 'window' });
+      })
+      .then(function (ventanas) {
+        ventanas.forEach(function (v) {
+          try { v.navigate(v.url); } catch (err) {}
+        });
+      })
+      .catch(function () {})
   );
 });
